@@ -1,10 +1,11 @@
 package cmap
 
 import (
-	"gotomic"
 	"runtime"
 	"sync"
 	"testing"
+
+	"github.com/zond/gotomic"
 )
 
 const (

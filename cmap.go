@@ -1,6 +1,6 @@
 package cmap
 
-import "gotomic"
+import "github.com/zond/gotomic"
 
 type Key [16]byte
 type Value interface{}
