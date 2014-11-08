@@ -1,5 +1,7 @@
 package cmap
 
+import "gotomic"
+
 type Key [16]byte
 type Value interface{}
 type KV struct {
@@ -7,8 +9,18 @@ type KV struct {
 	V Value
 }
 
+func (k Key) HashCode() uint32 {
+	return uint32(convert_back(k))
+
+}
+
+func (k Key) Equals(t gotomic.Thing) bool {
+	return t.(Key) == k
+}
+
 type Map struct {
 	store []KV
+	n     int
 }
 
 func (m *Map) Get(k Key) (Value, bool) {
@@ -29,4 +41,15 @@ func reuse_key(x uint64, b *[16]byte) Key {
 		(*b)[i] = byte((x >> (i * 8)))
 	}
 	return Key(*b)
+}
+
+func convert_back(k Key) uint64 {
+	b := [16]byte(k)
+	var x uint64
+	var i uint64
+	for i = 0; i < 8; i++ {
+		v := uint32(b[i])
+		x = x + uint64(v<<(i*8))
+	}
+	return x
 }

@@ -1,10 +1,123 @@
 package cmap
 
 import (
+	"gotomic"
 	"runtime"
 	"sync"
 	"testing"
 )
+
+const (
+	NUMKEYS = 2 << 20
+	WRAPPER = 2<<21 - 1
+)
+
+// GOMAP READS
+
+func BenchmarkGoMapReadFixed(b *testing.B) {
+	b.StopTimer()
+	m := make(map[Key]Value)
+	var buf [16]byte
+	for i := 0; i < NUMKEYS; i++ {
+		m[reuse_key(uint64(i), &buf)] = i
+	}
+	b.StartTimer()
+	for i := 0; i < b.N; i++ {
+		x, _ := m[reuse_key(uint64(i&WRAPPER), &buf)]
+		_ = x
+	}
+}
+
+func BenchmarkGoMapReadConcurrentNoLock(b *testing.B) {
+	nprocs := runtime.GOMAXPROCS(0)
+	b.StopTimer()
+	runtime.GOMAXPROCS(nprocs)
+	m := make(map[Key]Value)
+	var buf [16]byte
+	for i := 0; i < NUMKEYS; i++ {
+		m[reuse_key(uint64(i), &buf)] = i
+	}
+	b.StartTimer()
+	var wg sync.WaitGroup
+	for j := 0; j < nprocs; j++ {
+		wg.Add(1)
+		go func() {
+			for i := 0; i < b.N; i++ {
+				x, _ := m[reuse_key(uint64(i&WRAPPER), &buf)]
+				_ = x
+			}
+			wg.Done()
+		}()
+	}
+	wg.Wait()
+}
+
+func BenchmarkGoMapReadConcurrentLocked(b *testing.B) {
+	nprocs := runtime.GOMAXPROCS(0)
+	b.StopTimer()
+	runtime.GOMAXPROCS(nprocs)
+	m := make(map[Key]Value)
+	var rw sync.RWMutex
+	var buf [16]byte
+	for i := 0; i < NUMKEYS; i++ {
+		m[reuse_key(uint64(i), &buf)] = i
+	}
+	b.StartTimer()
+	var wg sync.WaitGroup
+	for j := 0; j < nprocs; j++ {
+		wg.Add(1)
+		go func() {
+			for i := 0; i < b.N; i++ {
+				rw.RLock()
+				x, _ := m[reuse_key(uint64(i&WRAPPER), &buf)]
+				_ = x
+				rw.RUnlock()
+			}
+			wg.Done()
+		}()
+	}
+	wg.Wait()
+}
+
+// GOTOMIC READS
+
+func benchmarkGotomicReadFixed(b *testing.B) {
+	b.StopTimer()
+	h := gotomic.NewHash()
+	var buf [16]byte
+	for i := 0; i < NUMKEYS; i++ {
+		h.Put(reuse_key(uint64(i), &buf), i)
+	}
+	b.StartTimer()
+	for i := 0; i < b.N; i++ {
+		x, _ := h.Get(reuse_key(uint64(i&WRAPPER), &buf))
+		_ = x
+	}
+}
+
+func BenchmarkGotomicReadConcurrent(b *testing.B) {
+	nprocs := runtime.GOMAXPROCS(0)
+	b.StopTimer()
+	runtime.GOMAXPROCS(nprocs)
+	h := gotomic.NewHash()
+	var buf [16]byte
+	for i := 0; i < NUMKEYS; i++ {
+		h.Put(reuse_key(uint64(i), &buf), i)
+	}
+	b.StartTimer()
+	var wg sync.WaitGroup
+	for j := 0; j < nprocs; j++ {
+		wg.Add(1)
+		go func() {
+			for i := 0; i < b.N; i++ {
+				x, _ := h.Get(reuse_key(uint64(i&WRAPPER), &buf))
+				_ = x
+			}
+			wg.Done()
+		}()
+	}
+	wg.Wait()
+}
 
 func BenchmarkGoMapWriteEmpty(b *testing.B) {
 	m := make(map[Key]Value)
@@ -18,98 +131,23 @@ func BenchmarkGoMapWriteFixed(b *testing.B) {
 	b.StopTimer()
 	m := make(map[Key]Value)
 	var buf [16]byte
-	for i := 0; i < 1000000; i++ {
+	for i := 0; i < NUMKEYS; i++ {
 		m[reuse_key(uint64(i), &buf)] = i
 	}
 	b.StartTimer()
 	for i := 0; i < b.N; i++ {
-		m[reuse_key(uint64(i%1000000), &buf)] = i
+		m[reuse_key(uint64(i&WRAPPER), &buf)] = i
 	}
 }
 
-func BenchmarkGoMapReadFixed(b *testing.B) {
-	b.StopTimer()
-	m := make(map[Key]Value)
-	var buf [16]byte
-	for i := 0; i < 1000000; i++ {
-		m[reuse_key(uint64(i), &buf)] = i
-	}
-	b.StartTimer()
-	for i := 0; i < b.N; i++ {
-		x, _ := m[reuse_key(uint64(i), &buf)]
-		_ = x
-	}
-}
-
-func BenchmarkGoMapConcurrent2(b *testing.B) {
-	benchmarkGoMapReadConcurrent(b, 2)
-}
-
-func BenchmarkGoMapConcurrent4(b *testing.B) {
-	benchmarkGoMapReadConcurrent(b, 4)
-}
-
-func BenchmarkGoMapConcurrent8(b *testing.B) {
-	benchmarkGoMapReadConcurrent(b, 8)
-}
-
-func BenchmarkGoMapConcurrent12(b *testing.B) {
-	benchmarkGoMapReadConcurrent(b, 12)
-}
-
-func BenchmarkGoMapWriteConcurrent1(b *testing.B) {
-	benchmarkGoMapWriteConcurrent(b, 1)
-}
-
-func BenchmarkGoMapWriteConcurrent2(b *testing.B) {
-	benchmarkGoMapWriteConcurrent(b, 2)
-}
-
-func BenchmarkGoMapWriteConcurrent4(b *testing.B) {
-	benchmarkGoMapWriteConcurrent(b, 4)
-}
-
-func BenchmarkGoMapWriteConcurrent8(b *testing.B) {
-	benchmarkGoMapWriteConcurrent(b, 8)
-}
-
-func BenchmarkGoMapWriteConcurrent12(b *testing.B) {
-	benchmarkGoMapWriteConcurrent(b, 12)
-}
-
-func benchmarkGoMapReadConcurrent(b *testing.B, nprocs int) {
+func BenchmarkGoMapWriteConcurrent(b *testing.B) {
+	nprocs := runtime.GOMAXPROCS(0)
 	b.StopTimer()
 	runtime.GOMAXPROCS(nprocs)
 	m := make(map[Key]Value)
 	var rw sync.RWMutex
 	var buf [16]byte
-	for i := 0; i < 1000000; i++ {
-		m[reuse_key(uint64(i), &buf)] = i
-	}
-	b.StartTimer()
-	var wg sync.WaitGroup
-	for j := 0; j < nprocs; j++ {
-		wg.Add(1)
-		go func() {
-			for i := 0; i < b.N; i++ {
-				rw.RLock()
-				x, _ := m[reuse_key(uint64(i), &buf)]
-				_ = x
-				rw.RUnlock()
-			}
-			wg.Done()
-		}()
-	}
-	wg.Wait()
-}
-
-func benchmarkGoMapWriteConcurrent(b *testing.B, nprocs int) {
-	b.StopTimer()
-	runtime.GOMAXPROCS(nprocs)
-	m := make(map[Key]Value)
-	var rw sync.RWMutex
-	var buf [16]byte
-	for i := 0; i < 1000000; i++ {
+	for i := 0; i < NUMKEYS; i++ {
 		m[reuse_key(uint64(i), &buf)] = i
 	}
 	b.StartTimer()
@@ -119,8 +157,52 @@ func benchmarkGoMapWriteConcurrent(b *testing.B, nprocs int) {
 		go func() {
 			for i := 0; i < b.N; i++ {
 				rw.Lock()
-				m[reuse_key(uint64(i%1000000), &buf)] = i
+				m[reuse_key(uint64(i&WRAPPER), &buf)] = i
 				rw.Unlock()
+			}
+			wg.Done()
+		}()
+	}
+	wg.Wait()
+}
+
+func BenchmarkGotomicWriteEmpty(b *testing.B) {
+	h := gotomic.NewHash()
+	var buf [16]byte
+	for i := 0; i < b.N; i++ {
+		h.Put(reuse_key(uint64(i), &buf), i)
+	}
+}
+
+func benchmarkGotomicWriteFixed(b *testing.B) {
+	b.StopTimer()
+	h := gotomic.NewHash()
+	var buf [16]byte
+	for i := 0; i < NUMKEYS; i++ {
+		h.Put(reuse_key(uint64(i), &buf), i)
+	}
+	b.StartTimer()
+	for i := 0; i < b.N; i++ {
+		h.Put(reuse_key(uint64(i&WRAPPER), &buf), i)
+	}
+}
+
+func BenchmarkGotomicWriteConcurrent(b *testing.B) {
+	nprocs := runtime.GOMAXPROCS(0)
+	b.StopTimer()
+	runtime.GOMAXPROCS(nprocs)
+	h := gotomic.NewHash()
+	var buf [16]byte
+	for i := 0; i < NUMKEYS; i++ {
+		h.Put(reuse_key(uint64(i), &buf), i)
+	}
+	b.StartTimer()
+	var wg sync.WaitGroup
+	for j := 0; j < nprocs; j++ {
+		wg.Add(1)
+		go func() {
+			for i := 0; i < b.N; i++ {
+				h.Put(reuse_key(uint64(i&WRAPPER), &buf), i)
 			}
 			wg.Done()
 		}()
