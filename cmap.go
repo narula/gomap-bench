@@ -1,6 +1,10 @@
 package cmap
 
-import "github.com/zond/gotomic"
+import (
+	"hash/crc32"
+
+	"github.com/zond/gotomic"
+)
 
 type Key [16]byte
 type Value interface{}
@@ -10,12 +14,15 @@ type KV struct {
 }
 
 func (k Key) HashCode() uint32 {
-	return uint32(convert_back(k))
+	return crc32.ChecksumIEEE(k[:])
 
 }
 
 func (k Key) Equals(t gotomic.Thing) bool {
-	return t.(Key) == k
+	if sk, ok := t.(Key); ok {
+		return sk == k
+	}
+	return false
 }
 
 type Map struct {
@@ -41,6 +48,15 @@ func reuse_key(x uint64, b *[16]byte) Key {
 		(*b)[i] = byte((x >> (i * 8)))
 	}
 	return Key(*b)
+}
+
+func key(x uint64) Key {
+	var i uint64
+	var b [16]byte
+	for i = 0; i < 8; i++ {
+		b[i] = byte((x >> (i * 8)))
+	}
+	return Key(b)
 }
 
 func convert_back(k Key) uint64 {
