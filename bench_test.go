@@ -16,13 +16,12 @@ const (
 // GOMAP READS
 
 func BenchmarkGoMapReadFixed(b *testing.B) {
-	b.StopTimer()
 	m := make(map[Key]Value)
 	var buf [16]byte
 	for i := 0; i < NUMKEYS; i++ {
 		m[reuse_key(uint64(i), &buf)] = i
 	}
-	b.StartTimer()
+	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		x, _ := m[reuse_key(uint64(i&WRAPPER), &buf)]
 		_ = x
@@ -31,15 +30,13 @@ func BenchmarkGoMapReadFixed(b *testing.B) {
 
 func BenchmarkGoMapReadConcurrentNoLock(b *testing.B) {
 	nprocs := runtime.GOMAXPROCS(0)
-	b.StopTimer()
-	runtime.GOMAXPROCS(nprocs)
 	m := make(map[Key]Value)
 	var buf [16]byte
 	for i := 0; i < NUMKEYS; i++ {
 		m[reuse_key(uint64(i), &buf)] = i
 	}
-	b.StartTimer()
 	var wg sync.WaitGroup
+	b.ResetTimer()
 	for j := 0; j < nprocs; j++ {
 		wg.Add(1)
 		go func() {
@@ -55,16 +52,14 @@ func BenchmarkGoMapReadConcurrentNoLock(b *testing.B) {
 
 func BenchmarkGoMapReadConcurrentLocked(b *testing.B) {
 	nprocs := runtime.GOMAXPROCS(0)
-	b.StopTimer()
-	runtime.GOMAXPROCS(nprocs)
 	m := make(map[Key]Value)
 	var rw sync.RWMutex
 	var buf [16]byte
 	for i := 0; i < NUMKEYS; i++ {
 		m[reuse_key(uint64(i), &buf)] = i
 	}
-	b.StartTimer()
 	var wg sync.WaitGroup
+	b.ResetTimer()
 	for j := 0; j < nprocs; j++ {
 		wg.Add(1)
 		go func() {
@@ -83,13 +78,12 @@ func BenchmarkGoMapReadConcurrentLocked(b *testing.B) {
 // GOTOMIC READS
 
 func benchmarkGotomicReadFixed(b *testing.B) {
-	b.StopTimer()
 	h := gotomic.NewHash()
 	var buf [16]byte
 	for i := 0; i < NUMKEYS; i++ {
 		h.Put(reuse_key(uint64(i), &buf), i)
 	}
-	b.StartTimer()
+	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		x, _ := h.Get(reuse_key(uint64(i&WRAPPER), &buf))
 		_ = x
@@ -98,15 +92,13 @@ func benchmarkGotomicReadFixed(b *testing.B) {
 
 func BenchmarkGotomicReadConcurrent(b *testing.B) {
 	nprocs := runtime.GOMAXPROCS(0)
-	b.StopTimer()
-	runtime.GOMAXPROCS(nprocs)
 	h := gotomic.NewHash()
 	var buf [16]byte
 	for i := 0; i < NUMKEYS; i++ {
 		h.Put(reuse_key(uint64(i), &buf), i)
 	}
-	b.StartTimer()
 	var wg sync.WaitGroup
+	b.ResetTimer()
 	for j := 0; j < nprocs; j++ {
 		wg.Add(1)
 		go func() {
@@ -123,19 +115,19 @@ func BenchmarkGotomicReadConcurrent(b *testing.B) {
 func BenchmarkGoMapWriteEmpty(b *testing.B) {
 	m := make(map[Key]Value)
 	var buf [16]byte
+	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		m[reuse_key(uint64(i), &buf)] = i
 	}
 }
 
 func BenchmarkGoMapWriteFixed(b *testing.B) {
-	b.StopTimer()
 	m := make(map[Key]Value)
 	var buf [16]byte
 	for i := 0; i < NUMKEYS; i++ {
 		m[reuse_key(uint64(i), &buf)] = i
 	}
-	b.StartTimer()
+	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		m[reuse_key(uint64(i&WRAPPER), &buf)] = i
 	}
@@ -143,16 +135,14 @@ func BenchmarkGoMapWriteFixed(b *testing.B) {
 
 func BenchmarkGoMapWriteConcurrent(b *testing.B) {
 	nprocs := runtime.GOMAXPROCS(0)
-	b.StopTimer()
-	runtime.GOMAXPROCS(nprocs)
 	m := make(map[Key]Value)
 	var rw sync.RWMutex
 	var buf [16]byte
 	for i := 0; i < NUMKEYS; i++ {
 		m[reuse_key(uint64(i), &buf)] = i
 	}
-	b.StartTimer()
 	var wg sync.WaitGroup
+	b.ResetTimer()
 	for j := 0; j < nprocs; j++ {
 		wg.Add(1)
 		go func() {
@@ -170,19 +160,19 @@ func BenchmarkGoMapWriteConcurrent(b *testing.B) {
 func BenchmarkGotomicWriteEmpty(b *testing.B) {
 	h := gotomic.NewHash()
 	var buf [16]byte
+	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		h.Put(reuse_key(uint64(i), &buf), i)
 	}
 }
 
 func benchmarkGotomicWriteFixed(b *testing.B) {
-	b.StopTimer()
 	h := gotomic.NewHash()
 	var buf [16]byte
 	for i := 0; i < NUMKEYS; i++ {
 		h.Put(reuse_key(uint64(i), &buf), i)
 	}
-	b.StartTimer()
+	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		h.Put(reuse_key(uint64(i&WRAPPER), &buf), i)
 	}
@@ -190,15 +180,13 @@ func benchmarkGotomicWriteFixed(b *testing.B) {
 
 func BenchmarkGotomicWriteConcurrent(b *testing.B) {
 	nprocs := runtime.GOMAXPROCS(0)
-	b.StopTimer()
-	runtime.GOMAXPROCS(nprocs)
 	h := gotomic.NewHash()
 	var buf [16]byte
 	for i := 0; i < NUMKEYS; i++ {
 		h.Put(reuse_key(uint64(i), &buf), i)
 	}
-	b.StartTimer()
 	var wg sync.WaitGroup
+	b.ResetTimer()
 	for j := 0; j < nprocs; j++ {
 		wg.Add(1)
 		go func() {

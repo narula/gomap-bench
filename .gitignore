@@ -1,1 +1,4 @@
 *~
+*.out
+*.svg
+gomap.test
