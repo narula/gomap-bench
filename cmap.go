@@ -3,7 +3,7 @@ package cmap
 import (
 	"hash/crc32"
 
-	"github.com/zond/gotomic"
+	"gotomic"
 )
 
 type Key [16]byte

@@ -5,7 +5,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/zond/gotomic"
+	"gotomic"
 )
 
 const (
