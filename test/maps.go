@@ -56,9 +56,10 @@ func main() {
 		}
 	case 1:
 		h := gotomic.NewHash()
-		keys := gomap.PreallocLocalKeys(gomap.NUMKEYS)
+		keys := make([]gotomic.Key, gomap.NUMKEYS)
 		hcs := make([]uint32, gomap.NUMKEYS)
 		for i := 0; i < gomap.NUMKEYS; i++ {
+			keys[i] = gotomic.MakeKey(uint64(i))
 			h.Put(keys[i], i)
 			hcs[i] = keys[i].HashCode()
 		}
@@ -78,7 +79,6 @@ func main() {
 					if !ok {
 						log.Fatalf("Could not get %v\n", k)
 					}
-					//					_ = x
 				}
 				wg.Done()
 			}(i)
