@@ -176,8 +176,10 @@ func BenchmarkGotomicReadConcurrent(b *testing.B) {
 	nprocs := runtime.GOMAXPROCS(0)
 	h := gotomic.NewHash()
 	keys := PreallocGotomicKeys(NUMKEYS)
+	hcs := make([]uint32, NUMKEYS)
 	for i := 0; i < NUMKEYS; i++ {
 		h.Put(keys[i], i)
+		hcs[i] = keys[i].HashCode()
 	}
 	var wg sync.WaitGroup
 	b.ResetTimer()
@@ -185,9 +187,10 @@ func BenchmarkGotomicReadConcurrent(b *testing.B) {
 		wg.Add(1)
 		go func() {
 			for i := 0; i < (b.N / nprocs); i++ {
-				x, ok := h.Get(keys[i&WRAPPER])
+				it := i & WRAPPER
+				x, ok := h.GetHC(hcs[it], keys[it])
 				if !ok {
-					b.Fatalf("Could not get %v\n", keys[i&WRAPPER])
+					b.Fatalf("Could not get %v\n", keys[it])
 				}
 				_ = x
 			}
@@ -244,12 +247,18 @@ func BenchmarkGotomicWriteConcurrent(b *testing.B) {
 func BenchmarkLgotomicReadOneThreadFixed(b *testing.B) {
 	h := lgotomic.NewHash()
 	keys := PreallocLocalKeys(NUMKEYS)
+	hcs := make([]uint32, NUMKEYS)
+	te := lgotomic.ReusableEntry()
+	hh := lgotomic.ReusableHashHit()
+	hit := lgotomic.ReusableHit()
 	for i := 0; i < NUMKEYS; i++ {
 		h.Put(keys[i], i)
+		hcs[i] = keys[i].HashCode()
 	}
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		x, _ := h.Get(keys[i&WRAPPER])
+		it := i & WRAPPER
+		x, _ := h.GetHC(hcs[it], keys[it], te, hh, hit)
 		_ = x
 	}
 }
@@ -258,18 +267,24 @@ func BenchmarkLgotomicReadConcurrent(b *testing.B) {
 	nprocs := runtime.GOMAXPROCS(0)
 	h := lgotomic.NewHash()
 	keys := PreallocLocalKeys(NUMKEYS)
+	hcs := make([]uint32, NUMKEYS)
 	for i := 0; i < NUMKEYS; i++ {
 		h.Put(keys[i], i)
+		hcs[i] = keys[i].HashCode()
 	}
 	var wg sync.WaitGroup
 	b.ResetTimer()
 	for j := 0; j < nprocs; j++ {
 		wg.Add(1)
 		go func() {
+			te := lgotomic.ReusableEntry()
+			hh := lgotomic.ReusableHashHit()
+			hit := lgotomic.ReusableHit()
 			for i := 0; i < (b.N / nprocs); i++ {
-				x, ok := h.Get(keys[i&WRAPPER])
+				it := i & WRAPPER
+				x, ok := h.GetHC(hcs[it], keys[it], te, hh, hit)
 				if !ok {
-					b.Fatalf("Could not get %v\n", keys[i&WRAPPER])
+					b.Fatalf("Could not get %v\n", keys[it])
 				}
 				_ = x
 			}

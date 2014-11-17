@@ -27,7 +27,7 @@ func main() {
 	}
 
 	var wg sync.WaitGroup
-	nitr := 2000000
+	nitr := 5000000
 	var p *prof.Profile
 	var start time.Time
 
@@ -57,8 +57,10 @@ func main() {
 	case 1:
 		h := gotomic.NewHash()
 		keys := gomap.PreallocLocalKeys(gomap.NUMKEYS)
+		hcs := make([]uint32, gomap.NUMKEYS)
 		for i := 0; i < gomap.NUMKEYS; i++ {
 			h.Put(keys[i], i)
+			hcs[i] = keys[i].HashCode()
 		}
 		p = prof.StartProfile()
 		start = time.Now()
@@ -66,12 +68,17 @@ func main() {
 		for i := 0; i < *clientGoRoutines; i++ {
 			wg.Add(1)
 			go func(n int) {
+				te := gotomic.ReusableEntry()
+				hh := gotomic.ReusableHashHit()
+				hit := gotomic.ReusableHit()
 				for j := 0; j < nitr; j++ {
-					x, ok := h.Get(keys[(j+n)&gomap.WRAPPER])
+					it := (j + n) & gomap.WRAPPER
+					k := keys[it]
+					_, ok := h.GetHC(hcs[it], k, te, hh, hit)
 					if !ok {
-						log.Fatalf("Could not get %v\n", keys[(j+n)&gomap.WRAPPER])
+						log.Fatalf("Could not get %v\n", k)
 					}
-					_ = x
+					//					_ = x
 				}
 				wg.Done()
 			}(i)
