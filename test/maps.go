@@ -69,13 +69,11 @@ func main() {
 		for i := 0; i < *clientGoRoutines; i++ {
 			wg.Add(1)
 			go func(n int) {
-				te := gotomic.ReusableEntry()
-				hh := gotomic.ReusableHashHit()
-				hit := gotomic.ReusableHit()
+				ld := gotomic.InitLocalData()
 				for j := 0; j < nitr; j++ {
 					it := (j + n) & gomap.WRAPPER
 					k := keys[it]
-					_, ok := h.GetHC(hcs[it], k, te, hh, hit)
+					_, ok := h.GetHC(hcs[it], k, ld)
 					if !ok {
 						log.Fatalf("Could not get %v\n", k)
 					}

@@ -248,9 +248,7 @@ func BenchmarkGotomicReadOneThreadFixed(b *testing.B) {
 	h := gotomic.NewHash()
 	keys := PreallocLocalKeys(NUMKEYS)
 	hcs := make([]uint32, NUMKEYS)
-	te := gotomic.ReusableEntry()
-	hh := gotomic.ReusableHashHit()
-	hit := gotomic.ReusableHit()
+	ld := gotomic.InitLocalData()
 	for i := 0; i < NUMKEYS; i++ {
 		h.Put(keys[i], i)
 		hcs[i] = keys[i].HashCode()
@@ -258,7 +256,7 @@ func BenchmarkGotomicReadOneThreadFixed(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		it := i & WRAPPER
-		x, _ := h.GetHC(hcs[it], keys[it], te, hh, hit)
+		x, _ := h.GetHC(hcs[it], keys[it], ld)
 		_ = x
 	}
 }
@@ -277,12 +275,10 @@ func BenchmarkGotomicReadConcurrent(b *testing.B) {
 	for j := 0; j < nprocs; j++ {
 		wg.Add(1)
 		go func() {
-			te := gotomic.ReusableEntry()
-			hh := gotomic.ReusableHashHit()
-			hit := gotomic.ReusableHit()
+			ld := gotomic.InitLocalData()
 			for i := 0; i < (b.N / nprocs); i++ {
 				it := i & WRAPPER
-				x, ok := h.GetHC(hcs[it], keys[it], te, hh, hit)
+				x, ok := h.GetHC(hcs[it], keys[it], ld)
 				if !ok {
 					b.Fatalf("Could not get %v\n", keys[it])
 				}
