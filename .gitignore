@@ -2,3 +2,4 @@
 *.out
 *.svg
 gomap.test
+test/maps
