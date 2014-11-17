@@ -3,9 +3,9 @@ package gomap
 import (
 	"hash/crc32"
 
-	lgotomic "gotomic"
+	"gotomic"
 
-	"github.com/zond/gotomic"
+	lgotomic "github.com/zond/gotomic"
 )
 
 type Key1 [16]byte
@@ -17,7 +17,7 @@ func (k Key1) HashCode() uint32 {
 
 }
 
-func (k Key1) Equals(t gotomic.Thing) bool {
+func (k Key1) Equals(t lgotomic.Thing) bool {
 	if sk, ok := t.(Key1); ok {
 		return sk == k
 	}
@@ -38,7 +38,7 @@ func (k Key2) HashCode() uint32 {
 
 }
 
-func (k Key2) Equals(t lgotomic.Thing) bool {
+func (k Key2) Equals(t gotomic.Thing) bool {
 	if sk, ok := t.(Key2); ok {
 		return sk == k
 	}
