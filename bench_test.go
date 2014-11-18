@@ -1,11 +1,11 @@
 package gomap
 
 import (
+	"gotomic"
 	"runtime"
 	"sync"
 	"testing"
-
-	"gotomic"
+	"unsafe"
 
 	lgotomic "github.com/zond/gotomic"
 )
@@ -250,7 +250,8 @@ func BenchmarkGotomicReadOneThreadFixed(b *testing.B) {
 	hcs := make([]uint32, NUMKEYS)
 	ld := gotomic.InitLocalData()
 	for i := 0; i < NUMKEYS; i++ {
-		h.Put(keys[i], i)
+		x := i
+		h.Put(keys[i], unsafe.Pointer(&x))
 		hcs[i] = keys[i].HashCode()
 	}
 	b.ResetTimer()
@@ -267,7 +268,8 @@ func BenchmarkGotomicReadConcurrent(b *testing.B) {
 	keys := PreallocLocalKeys(NUMKEYS)
 	hcs := make([]uint32, NUMKEYS)
 	for i := 0; i < NUMKEYS; i++ {
-		h.Put(keys[i], i)
+		x := i
+		h.Put(keys[i], unsafe.Pointer(&x))
 		hcs[i] = keys[i].HashCode()
 	}
 	var wg sync.WaitGroup
@@ -295,7 +297,8 @@ func BenchmarkGotomicWriteOneThreadEmpty(b *testing.B) {
 	keys := PreallocLocalKeys(NUMKEYS)
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		h.Put(keys[i], i)
+		x := i
+		h.Put(keys[i], unsafe.Pointer(&x))
 	}
 }
 
@@ -303,11 +306,13 @@ func BenchmarkGotomicWriteOneThreadFixed(b *testing.B) {
 	h := gotomic.NewHash()
 	keys := PreallocLocalKeys(NUMKEYS)
 	for i := 0; i < NUMKEYS; i++ {
-		h.Put(keys[i], i)
+		x := i
+		h.Put(keys[i], unsafe.Pointer(&x))
 	}
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		h.Put(keys[i&WRAPPER], i)
+		x := i
+		h.Put(keys[i&WRAPPER], unsafe.Pointer(&x))
 	}
 }
 
@@ -316,7 +321,8 @@ func BenchmarkGotomicWriteConcurrent(b *testing.B) {
 	keys := PreallocLocalKeys(NUMKEYS)
 	h := gotomic.NewHash()
 	for i := 0; i < NUMKEYS; i++ {
-		h.Put(keys[i], i)
+		x := i
+		h.Put(keys[i], unsafe.Pointer(&x))
 	}
 	var wg sync.WaitGroup
 	b.ResetTimer()
@@ -324,7 +330,8 @@ func BenchmarkGotomicWriteConcurrent(b *testing.B) {
 		wg.Add(1)
 		go func() {
 			for i := 0; i < (b.N / nprocs); i++ {
-				h.Put(keys[i&WRAPPER], i)
+				x := i
+				h.Put(keys[i], unsafe.Pointer(&x))
 			}
 			wg.Done()
 		}()

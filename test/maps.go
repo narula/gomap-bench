@@ -10,6 +10,7 @@ import (
 	"runtime"
 	"sync"
 	"time"
+	"unsafe"
 
 	lgotomic "github.com/zond/gotomic"
 )
@@ -60,7 +61,7 @@ func main() {
 		hcs := make([]uint32, gomap.NUMKEYS)
 		for i := 0; i < gomap.NUMKEYS; i++ {
 			keys[i] = gotomic.MakeKey(uint64(i))
-			h.Put(keys[i], i)
+			h.Put(keys[i], unsafe.Pointer(&i))
 			hcs[i] = keys[i].HashCode()
 		}
 		p = prof.StartProfile()
